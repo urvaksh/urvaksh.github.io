@@ -1,33 +1,35 @@
 var gulp = require('gulp'),
-  sourcemaps = require('gulp-sourcemaps'),
-  source = require('vinyl-source-stream'),
-  buffer = require('vinyl-buffer'),
-  browserify = require('browserify'),
-  watchify = require('watchify'),
-  babel = require('babelify'),
-  sass = require('gulp-sass'),
-  autoprefixer = require('gulp-autoprefixer'),
-  browserSync = require('browser-sync'),
-  reload = browserSync.reload,
-  concat = require('gulp-concat'),
-  uglify = require('gulp-uglify'),
-  rename = require('gulp-rename'),
-  filter = require('gulp-filter'),
-  rev = require('gulp-rev'),
-  resolve = require('resolve'),
-  del = require('del');
+sourcemaps = require('gulp-sourcemaps'),
+source = require('vinyl-source-stream'),
+buffer = require('vinyl-buffer'),
+browserify = require('browserify'),
+watchify = require('watchify'),
+babel = require('babelify'),
+sass = require('gulp-sass'),
+autoprefixer = require('gulp-autoprefixer'),
+browserSync = require('browser-sync'),
+reload = browserSync.reload,
+//concat = require('gulp-concat'),
+uglify = require('gulp-uglify'),
+//rename = require('gulp-rename'),
+//filter = require('gulp-filter'),
+//rev = require('gulp-rev'),
+resolve = require('resolve'),
+del = require('del');
 
 // ////////////////////////////////////////////////
 // Config
 // // /////////////////////////////////////////////
 var config = {
   globs : {
-    staticFiles: ['src/**/*.html','src/**/*.md'],
+    staticFiles: ['src/**/*.html','src/**/*.md','src/data/*.*'],
     js : ['src/js/**/*.js'],
-    sass : 'src/scss/style.scss' 
+    sass : 'src/scss/style.scss'
   },
   jsMain : './src/js/main.js',
-  jsBundle : 'app.js'
+  jsBundle : 'js/app.js',
+  jsVendorBundle : 'js/vendor.js',
+  buildDir : './projects'
 };
 
 // ////////////////////////////////////
@@ -44,66 +46,98 @@ function getNPMPackageIds() {
   return Object.keys(packageManifest.dependencies) || [];
 }
 
+/**
+* npmBundling 0 or undefined (any falsie)=> bundle all, -1=> Only NPM (vendor), 1=> Only local (app)
+*/
+function initBrowserify(options, transformer, npmBundling){
+  options = options || {};
+
+  var b = browserify(options)
+  .transform(transformer);
+
+  if(!npmBundling){
+    var npmPackages = getNPMPackageIds();
+    if(npmBundling===1){
+      npmPackages.forEach(function(id) {
+        b.external(id);
+      });
+    } else if(npmBundling===1){
+      npmPackages.forEach(function(id) {
+        b.require(resolve.sync(id), {expose: id});
+      });
+    } else {
+      throw "npmBundling can only have values of -1, 1 0 or be left undefined";
+    }
+  }
+
+  return b;
+
+}
+
 function bundle(name, b) {
-  return b.bundle().pipe(source(name))
-  //.pipe(rename(name.substring(0, name.lastIndexOf('.js')) + '.min.js'))
+  return b
+  .bundle()
+  .on('error', function(err) { console.error(err); this.emit('end'); })
+  .pipe(source(name))
   .pipe(buffer())
+  //.pipe(uglify())
   .pipe(sourcemaps.init({ loadMaps: true }))
   .pipe(sourcemaps.write('./'))
-  .pipe(gulp.dest('./build'));
+  .pipe(gulp.dest(config.buildDir));
 }
 
 
-  // ////////////////////////////////////////////////
-  // Log Errors
-  // // /////////////////////////////////////////////
+// ////////////////////////////////////////////////
+// Log Errors
+// // /////////////////////////////////////////////
 
-  function errorlog(err){
-  	console.log(err.message);
-  	this.emit('end');
-  }
+function errorlog(err){
+  console.log(err.message);
+  this.emit('end');
+}
 
-  // ////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 // Scripts Tasks
 // ///////////////////////////////////////////////
 
 gulp.task('scripts', function() {
 
+//Create a browserify instance since we need to use it for both watchify and builds
+var b = initBrowserify({debug: true, entries: ['./src/js/main.js']}, babel, 1);
 
-  var b = browserify({debug: true})
-  .require('./src/js/main.js', {entry: true})
-  .transform(babel);
+/*Incorporate watchify */
+watchify(b).on('update', function(){
+  console.log("Updating");
+  var start = Date.now();
+  bundle(config.jsBundle, b)
+  .pipe(reload({stream:true}));
+  var end = Date.now();
+  console.log("Done in "+(end-start)+" ms!!");
+});
 
-  getNPMPackageIds().forEach(function(id) {
-    console.log(id);
-    b.external(id);
-  });
 
-  return bundle(config.jsBundle, b);
+return b.bundle()
+.on('error', errorlog)
+.pipe(source(config.jsBundle))
+.pipe(buffer())
+.pipe(uglify())
+.pipe(sourcemaps.init({ loadMaps: true }))
+.pipe(sourcemaps.write('./'))
+.pipe(gulp.dest(config.buildDir));
 
 });
 
 gulp.task('vendor', function() {
-  var b = browserify({debug: false});
+  var b = initBrowserify({debug: false},function(a){return a;},-1);
 
-  getNPMPackageIds().forEach(function(id) {
-    b.require(resolve.sync(id), {expose: id});
-  });
-
-  return bundle('vendor.js', b);
-});
-
-gulp.task('scripts_old', function() {
-  return browserify(config.jsMain, { debug: true })
-
-  .transform(babel)
-  .bundle()
-  .on('error', function(err) { console.error(err); this.emit('end'); })
-  .pipe(source(config.jsBundle))
+  return b.bundle()
+  .on('error', errorlog)
+  .pipe(source('js/vendor.js'))
   .pipe(buffer())
+  .pipe(uglify())
   .pipe(sourcemaps.init({ loadMaps: true }))
   .pipe(sourcemaps.write('./'))
-  .pipe(gulp.dest('./build'));
+  .pipe(gulp.dest(config.buildDir));
 
 });
 
@@ -112,16 +146,16 @@ gulp.task('scripts_old', function() {
 // ///////////////////////////////////////////////
 
 gulp.task('styles', function() {
-	gulp.src(config.globs.sass)
+  gulp.src(config.globs.sass)
   .pipe(sourcemaps.init())
   .pipe(sass({outputStyle: 'compressed'}))
   .on('error', errorlog)
   .pipe(autoprefixer({
-   browsers: ['last 3 versions'],
-   cascade: false
- }))
+    browsers: ['last 2 versions'],
+    cascade: false
+  }))
   .pipe(sourcemaps.write('../maps'))
-  .pipe(gulp.dest('build/css'))
+  .pipe(gulp.dest(config.buildDir+'/css'))
   .pipe(reload({stream:true}));
 });
 
@@ -132,7 +166,7 @@ gulp.task('styles', function() {
 
 gulp.task('html', function(){
   gulp.src(config.globs.staticFiles)
-  .pipe(gulp.dest('build'))
+  .pipe(gulp.dest(config.buildDir))
   .pipe(reload({stream:true}));
 });
 
@@ -143,7 +177,7 @@ gulp.task('html', function(){
 gulp.task('browser-sync', function() {
   browserSync({
     server: {
-      baseDir: "./build/"
+      baseDir: config.buildDir
     }
   });
 });
@@ -152,7 +186,7 @@ gulp.task('browser-sync', function() {
 gulp.task('build:serve', function() {
   browserSync({
     server: {
-      baseDir: "./build/"
+      baseDir: config.buildDir
     }
   });
 });
@@ -162,29 +196,20 @@ gulp.task('build:serve', function() {
 
 // clean out all files and folders from build folder
 gulp.task('build:cleanfolder', function (cb) {
-	del([
-		'build/**'
-   ], cb);
+  del([
+    'build/**'
+  ], cb);
 });
-
-// task to create build directory of all files
-gulp.task('build:copy', ['build:cleanfolder'], function(){
-  return gulp.src('src/**/*/')
-  .pipe(gulp.dest('build/'));
-});
-
-
-gulp.task('build', ['build:copy']);
 
 
 // ////////////////////////////////////////////////
 // Watch Tasks
 // // /////////////////////////////////////////////
 
-gulp.task ('watch', ['default','browser-sync'], function(){
-	gulp.watch(config.globs.scss, ['styles']);
-	gulp.watch(config.globs.js, ['scripts']);
- gulp.watch(config.globs.staticFiles, ['html']);
+gulp.task ('watch', ['build:cleanfolder','default','browser-sync'], function(){
+  gulp.watch(config.globs.scss, ['styles']);
+  //gulp.watch(config.globs.js, ['scripts']); Using watchify instead
+  gulp.watch(config.globs.staticFiles, ['html']);
 });
 
 // ////////////////////////////////////////////////
@@ -192,36 +217,3 @@ gulp.task ('watch', ['default','browser-sync'], function(){
 // // /////////////////////////////////////////////
 
 gulp.task('default', ['vendor','scripts', 'styles', 'html']);
-/*
-function compile(watch) {
-  var bundler = watchify(browserify('./js/main.js', { debug: true }).transform(babel));
-
-  function rebundle() {
-    bundler.bundle()
-      .on('error', function(err) { console.error(err); this.emit('end'); })
-      .pipe(source('build.js'))
-      .pipe(buffer())
-      .pipe(sourcemaps.init({ loadMaps: true }))
-      .pipe(sourcemaps.write('./'))
-      .pipe(gulp.dest('./build'));
-  }
-
-  if (watch) {
-    bundler.on('update', function() {
-      console.log('-> bundling...');
-      rebundle();
-    });
-  }
-
-  rebundle();
-}
-
-function watch() {
-  return compile(true);
-};
-
-gulp.task('build', function() { return compile(); });
-gulp.task('watch', function() { return watch(); });
-
-gulp.task('default', ['watch']);
-*/

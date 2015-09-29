@@ -1,7 +1,8 @@
 /*jshint esnext: true */
 
-import $  from '../../node_modules/jquery/dist/jquery';
-import marked  from '../../node_modules/marked/lib/marked';
+import $  from '../../node_modules/jquery/dist/jquery'
+import marked  from '../../node_modules/marked/lib/marked'
+import sessionStorage  from './utils/sessionStorage'
 
 export default class Project {
   constructor({name, tagLine, url, build, icon, wiki_links}={}) {
@@ -18,9 +19,8 @@ export default class Project {
     if(this.wiki_links!==""){
 
       var projectKey = `Projects|${this.name}|wiki|index`;
-      var sessionData = sessionStorage.getItem(projectKey);
-      if(sessionData){
-        var pages = JSON.parse(sessionData);
+      var pages = sessionStorage.getObject(projectKey);
+      if(pages){
         cb(pages);
         return true;
       }
@@ -32,7 +32,7 @@ export default class Project {
           .map(function(idx, elem){
             return {"name":$(elem).text(),"href":$(elem).attr("href")};
           });
-          sessionStorage.setItem(projectKey,JSON.stringify(pages));
+          sessionStorage.setObject(projectKey,pages);
           cb(pages);
           return true;
       });
@@ -49,7 +49,7 @@ export default class Project {
     }
 
     var pageKey = `Projects|${this.name}|wiki|page|${href}`;
-      var sessionData = sessionStorage.getItem(pageKey);
+      var sessionData = sessionStorage.getString(pageKey);
       if(sessionData){
         callback (sessionData);
         return true;
@@ -57,7 +57,7 @@ export default class Project {
 
       $.get(this.wiki_links+href+'.md')
       .done(function(markdown){
-          sessionStorage.setItem(pageKey,markdown);
+          sessionStorage.setString(pageKey,markdown);
           callback(markdown);
           return true;
       });

@@ -1,5 +1,0 @@
-[Home](Home)   
-[Why is it called Sheldon?](Why-is-it-called-Sheldon%3F)   
-[API Overview](API-Overview)   
-[Comparators](Comparators)   
-[Groups](Groups)
