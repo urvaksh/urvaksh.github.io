@@ -14,6 +14,7 @@ var p = new Project({
 */
 
 $(function(){
+  
   $.get("./data/projects.json", function(projects){
 
     $.each(projects, function(n, project){

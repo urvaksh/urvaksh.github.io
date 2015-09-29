@@ -9,20 +9,20 @@ sass = require('gulp-sass'),
 autoprefixer = require('gulp-autoprefixer'),
 browserSync = require('browser-sync'),
 reload = browserSync.reload,
-//concat = require('gulp-concat'),
 uglify = require('gulp-uglify'),
-//rename = require('gulp-rename'),
 //filter = require('gulp-filter'),
 //rev = require('gulp-rev'),
 resolve = require('resolve'),
-del = require('del');
+del = require('del'),
+args   = require('yargs').argv,
+ gulpif = require('gulp-if');
 
 // ////////////////////////////////////////////////
 // Config
 // // /////////////////////////////////////////////
 var config = {
   globs : {
-    staticFiles: ['src/**/*.html','src/**/*.md','src/data/*.*'],
+    staticFiles: ['src/*.html','src/**/*.html','src/**/*.json'],
     js : ['src/js/**/*.js'],
     sass : 'src/scss/style.scss'
   },
@@ -33,8 +33,13 @@ var config = {
 };
 
 // ////////////////////////////////////
-// Utilities
+// Utility functions for Browserify
 // ////////////////////////////////////
+
+function identity (e){
+  return e;
+}
+
 function getNPMPackageIds() {
   // read package.json and get dependencies' package ids
   var packageManifest = {};
@@ -74,19 +79,6 @@ function initBrowserify(options, transformer, npmBundling){
 
 }
 
-function bundle(name, b) {
-  return b
-  .bundle()
-  .on('error', function(err) { console.error(err); this.emit('end'); })
-  .pipe(source(name))
-  .pipe(buffer())
-  //.pipe(uglify())
-  .pipe(sourcemaps.init({ loadMaps: true }))
-  .pipe(sourcemaps.write('./'))
-  .pipe(gulp.dest(config.buildDir));
-}
-
-
 // ////////////////////////////////////////////////
 // Log Errors
 // // /////////////////////////////////////////////
@@ -100,39 +92,45 @@ function errorlog(err){
 // Scripts Tasks
 // ///////////////////////////////////////////////
 
-gulp.task('scripts', function() {
+gulp.task('scripts:app', function() {
+  var self = this;
+  self.createBundle = function(browserifyObj, finalName){
+    return browserifyObj.bundle()
+    .on('error', errorlog)
+    .pipe(source(finalName))
+    .pipe(buffer())
+    .pipe(uglify())
+    .pipe(sourcemaps.init({ loadMaps: true }))
+    .pipe(sourcemaps.write('./'))
+    .pipe(gulp.dest(config.buildDir));
+  };
 
 //Create a browserify instance since we need to use it for both watchify and builds
-var b = initBrowserify({debug: true, entries: ['./src/js/main.js']}, babel, 1);
+var b = initBrowserify({debug: true, entries: [config.jsMain]}, babel, 1);
 
-/*Incorporate watchify */
-watchify(b).on('update', function(){
-  console.log("Updating");
-  var start = Date.now();
-  bundle(config.jsBundle, b)
-  .pipe(reload({stream:true}));
-  var end = Date.now();
-  console.log("Done in "+(end-start)+" ms!!");
-});
+if(!args.nowatch){
+  /*Incorporate watchify */
+  console.log("watchify is watching for js changes");
+  watchify(b).on('update', function(){
+    console.log("Watchify Updating");
+    var start = Date.now();
+    self.createBundle(b, config.jsBundle)
+    .pipe(reload({stream:true}));
+    var end = Date.now();
+    console.log("Watchify done in "+(end-start)+" ms!!");
+  });
+}
 
-
-return b.bundle()
-.on('error', errorlog)
-.pipe(source(config.jsBundle))
-.pipe(buffer())
-.pipe(uglify())
-.pipe(sourcemaps.init({ loadMaps: true }))
-.pipe(sourcemaps.write('./'))
-.pipe(gulp.dest(config.buildDir));
+return this.createBundle(b, config.jsBundle);
 
 });
 
-gulp.task('vendor', function() {
-  var b = initBrowserify({debug: false},function(a){return a;},-1);
+gulp.task('scripts:vendor', function() {
+  var b = initBrowserify({debug: false},identity,-1);
 
   return b.bundle()
   .on('error', errorlog)
-  .pipe(source('js/vendor.js'))
+  .pipe(source(config.jsVendorBundle))
   .pipe(buffer())
   .pipe(uglify())
   .pipe(sourcemaps.init({ loadMaps: true }))
@@ -140,6 +138,8 @@ gulp.task('vendor', function() {
   .pipe(gulp.dest(config.buildDir));
 
 });
+
+gulp.task('scripts', ['scripts:vendor','scripts:app']);
 
 // ////////////////////////////////////////////////
 // Styles Tasks
@@ -175,45 +175,26 @@ gulp.task('html', function(){
 // // /////////////////////////////////////////////
 
 gulp.task('browser-sync', function() {
+  if(!args.nowatch){
   browserSync({
     server: {
       baseDir: config.buildDir
-    }
+    },
+    browser : []
   });
-});
-
-// task to run build server for testing final app
-gulp.task('build:serve', function() {
-  browserSync({
-    server: {
-      baseDir: config.buildDir
-    }
-  });
-});
-// ////////////////////////////////////////////////
-// Build Tasks
-// // /////////////////////////////////////////////
-
-// clean out all files and folders from build folder
-gulp.task('build:cleanfolder', function (cb) {
-  del([
-    'build/**'
-  ], cb);
-});
-
-
-// ////////////////////////////////////////////////
-// Watch Tasks
-// // /////////////////////////////////////////////
-
-gulp.task ('watch', ['build:cleanfolder','default','browser-sync'], function(){
-  gulp.watch(config.globs.scss, ['styles']);
-  //gulp.watch(config.globs.js, ['scripts']); Using watchify instead
-  gulp.watch(config.globs.staticFiles, ['html']);
+}
 });
 
 // ////////////////////////////////////////////////
 // Default Task
 // // /////////////////////////////////////////////
 
-gulp.task('default', ['vendor','scripts', 'styles', 'html']);
+gulp.task('default', ['scripts', 'styles', 'html', 'browser-sync'], function(){
+    //console.log("nowatch: "+(args.nowatch));
+
+if(!args.nowatch){
+    console.log("Watching for static and html changes");
+    gulp.watch(config.globs.scss, ['styles']);
+    gulp.watch(config.globs.staticFiles, ['html']);
+}
+});
