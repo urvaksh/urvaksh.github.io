@@ -52,7 +52,7 @@ function getNPMPackageIds() {
 }
 
 /**
-* npmBundling 0 or undefined (any falsie)=> bundle all, -1=> Only NPM (vendor), 1=> Only local (app)
+* npmBundling empty, null or undefined => bundle all, vendor=> Only NPM (vendor), app=> Only local (app)
 */
 function initBrowserify(options, transformer, npmBundling){
   options = options || {};
@@ -60,18 +60,19 @@ function initBrowserify(options, transformer, npmBundling){
   var b = browserify(options)
   .transform(transformer);
 
-  if(!npmBundling){
+  if(npmBundling){
+    console.log("Using custom bundles");
     var npmPackages = getNPMPackageIds();
-    if(npmBundling===1){
+    if(npmBundling==='app'){
       npmPackages.forEach(function(id) {
         b.external(id);
       });
-    } else if(npmBundling===1){
+    } else if(npmBundling==='vendor'){
       npmPackages.forEach(function(id) {
         b.require(resolve.sync(id), {expose: id});
       });
     } else {
-      throw "npmBundling can only have values of -1, 1 0 or be left undefined";
+      throw "npmBundling can only have values of -1, 1 0 or be left undefined, current value is "+npmBundling;
     }
   }
 
@@ -106,7 +107,7 @@ gulp.task('scripts:app', function() {
   };
 
 //Create a browserify instance since we need to use it for both watchify and builds
-var b = initBrowserify({debug: true, entries: [config.jsMain]}, babel, 1);
+var b = initBrowserify({debug: true, entries: [config.jsMain]}, babel, "app");
 
 if(!args.nowatch){
   /*Incorporate watchify */
@@ -126,7 +127,7 @@ return this.createBundle(b, config.jsBundle);
 });
 
 gulp.task('scripts:vendor', function() {
-  var b = initBrowserify({debug: false},identity,-1);
+  var b = initBrowserify({debug: false},identity,"vendor");
 
   return b.bundle()
   .on('error', errorlog)

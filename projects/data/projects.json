@@ -1,0 +1,17 @@
+[
+  {
+    "name" : "Sheldon",
+    "tagLine" : "A framework that detects changes and complains about them",
+    "url" : "https://github.com/urvaksh/sheldon",
+    "build" : "https://travis-ci.org/urvaksh/sheldon",
+    "icon" : "",
+    "wiki_links" : "https://raw.githubusercontent.com/wiki/urvaksh/Sheldon/"
+  },{
+    "name" : "puFFer",
+    "tagLine" : "A framework to allow conversions between fixed length messages and objects",
+    "url" : "https://github.com/urvaksh/puffer",
+    "build" : "https://travis-ci.org/urvaksh/puffer",
+    "icon" : "",
+    "wiki_links" : "https://raw.githubusercontent.com/wiki/urvaksh/puffer/"
+  }
+]
