@@ -1,35 +1,33 @@
 /*jshint esnext: true */
-
-import $  from '../../node_modules/jquery/dist/jquery'
-import Project  from './Project'
 /*
-var p = new Project({
-  name: "Sheldon",
-  tagLine: "A framework that detects changes and complains about them",
-  url: "https://github.com/urvaksh/sheldon",
-  build: "https://travis-ci.org/urvaksh/sheldon",
-  icon: "",
-  wiki_links: "https://raw.githubusercontent.com/wiki/urvaksh/Sheldon/"
+System.import('../../node_modules/jquery/dist/jquery').then(function($){
+  System.import('../../node_modules/bootstrap/dist/js/bootstrap');
 });
 */
 
-$(function(){
-  
+import $  from '../../node_modules/jquery/dist/jquery';
+//window.jQuery = $;
+//import '../../node_modules/bootstrap/dist/js/bootstrap';
+//import bootstrap  from './wrappers/bootstrap';
+import Project  from './Project';
+
+$(()=>{
   $.get("./data/projects.json", function(projects){
 
-    $.each(projects, function(n, project){
+    $.each(projects, (n, project) => {
 
       var p = new Project(project);
       var projectDiv = $("<div></div>").append($("<h2 />").text(p.name));
 
       p.getWikiIndex(function(data){
-        $.each(data, function(n, elem){
+        $.each(data, (n, elem) => {
           $(projectDiv)
           .append(
             $("<a></a>").text(elem.name).attr({"href":"#","wiki-loc":elem.href})
             .click(function(){
               p.getWikiPage($(this).attr("wiki-loc"), function(result){
                 var cover = $("<div></div>").addClass("markdown-body").append($(result));
+                $(cover).find("a[href]").filter(':not(a[href^=http])').attr("wiki-loc",$(this).attr("href"));
                 $("#content").html(cover);
                 return false;
               });
@@ -39,5 +37,4 @@ $(function(){
         });
       });
     });
-
   });

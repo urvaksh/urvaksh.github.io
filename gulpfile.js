@@ -61,7 +61,6 @@ function initBrowserify(options, transformer, npmBundling){
   .transform(transformer);
 
   if(npmBundling){
-    console.log("Using custom bundles");
     var npmPackages = getNPMPackageIds();
     if(npmBundling==='app'){
       npmPackages.forEach(function(id) {
@@ -96,13 +95,14 @@ function errorlog(err){
 gulp.task('scripts:app', function() {
   var self = this;
   self.createBundle = function(browserifyObj, finalName){
-    return browserifyObj.bundle()
+    return browserifyObj
+    .bundle()
     .on('error', errorlog)
     .pipe(source(finalName))
     .pipe(buffer())
-    .pipe(uglify())
+    //.pipe(uglify())
     .pipe(sourcemaps.init({ loadMaps: true }))
-    .pipe(sourcemaps.write('./'))
+    .pipe(sourcemaps.write('./maps'))
     .pipe(gulp.dest(config.buildDir));
   };
 
@@ -129,13 +129,14 @@ return this.createBundle(b, config.jsBundle);
 gulp.task('scripts:vendor', function() {
   var b = initBrowserify({debug: false},identity,"vendor");
 
-  return b.bundle()
+  return b
+  .bundle()
   .on('error', errorlog)
   .pipe(source(config.jsVendorBundle))
   .pipe(buffer())
-  .pipe(uglify())
+  //.pipe(uglify())
   .pipe(sourcemaps.init({ loadMaps: true }))
-  .pipe(sourcemaps.write('./'))
+  .pipe(sourcemaps.write('./maps'))
   .pipe(gulp.dest(config.buildDir));
 
 });
@@ -147,7 +148,12 @@ gulp.task('scripts', ['scripts:vendor','scripts:app']);
 // ///////////////////////////////////////////////
 
 gulp.task('styles', function() {
-  gulp.src(config.globs.sass)
+
+  //Copy over all fonts
+  gulp.src('./node_modules/bootstrap/dist/fonts/*')
+  .pipe(gulp.dest(config.buildDir+'/fonts'));
+
+  return gulp.src(config.globs.sass)
   .pipe(sourcemaps.init())
   .pipe(sass({outputStyle: 'compressed'}))
   .on('error', errorlog)
