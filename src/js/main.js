@@ -1,40 +1,28 @@
 /*jshint esnext: true */
-/*
-System.import('../../node_modules/jquery/dist/jquery').then(function($){
-  System.import('../../node_modules/bootstrap/dist/js/bootstrap');
-});
-*/
 
-import $  from '../../node_modules/jquery/dist/jquery';
-//window.jQuery = $;
-//import '../../node_modules/bootstrap/dist/js/bootstrap';
-//import bootstrap  from './wrappers/bootstrap';
+import jQuery from '../../node_modules/jquery';
+//import jQuery from 'jquery';
+//import '../../node_modules/bootstrap';
+require('bootstrap');
 import Project  from './Project';
 
-$(()=>{
-  $.get("./data/projects.json", function(projects){
+import './component/project.js';
+import './component/projectMarkdown.js';
 
-    $.each(projects, (n, project) => {
+jQuery(()=>{
+  jQuery.get("./data/projects.json", function(projects){
+    var event = new CustomEvent('projectData',{'detail' : projects});
+    document.body.dispatchEvent(event);
 
-      var p = new Project(project);
-      var projectDiv = $("<div></div>").append($("<h2 />").text(p.name));
+    setTimeout(()=>{
+      var autoload = window.location.hash.substring(1).split('/');
+      if(autoload[0]==='Projects'){
+        document.querySelector('x-project-index[projectName='+autoload[1]+']')
+        .querySelector('a[wiki-loc='+autoload[2]+']')
+        //.querySelector('a[href = '+window.location.hash+']')
+        .click();
+      }
+    },1000);
 
-      p.getWikiIndex(function(data){
-        $.each(data, (n, elem) => {
-          $(projectDiv)
-          .append(
-            $("<a></a>").text(elem.name).attr({"href":"#","wiki-loc":elem.href})
-            .click(function(){
-              p.getWikiPage($(this).attr("wiki-loc"), function(result){
-                var cover = $("<div></div>").addClass("markdown-body").append($(result));
-                $(cover).find("a[href]").filter(':not(a[href^=http])').attr("wiki-loc",$(this).attr("href"));
-                $("#content").html(cover);
-                return false;
-              });
-            })).append($("<br />"));
-          });
-          $("#menu").append(projectDiv);
-        });
-      });
-    });
   });
+});

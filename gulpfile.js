@@ -24,10 +24,11 @@ var config = {
   globs : {
     staticFiles: ['src/*.html','src/**/*.html','src/**/*.json'],
     js : ['src/js/**/*.js'],
-    sass : 'src/scss/style.scss'
+    sass : 'src/sass/**.s[ac]ss'
   },
   jsMain : './src/js/main.js',
   jsBundle : 'js/app.js',
+  sassMain : 'src/sass/style.sass',
   jsVendorBundle : 'js/vendor.js',
   buildDir : './projects'
 };
@@ -127,7 +128,7 @@ return this.createBundle(b, config.jsBundle);
 });
 
 gulp.task('scripts:vendor', function() {
-  var b = initBrowserify({debug: false},identity,"vendor");
+  var b = initBrowserify({debug: true},identity,"vendor");
 
   return b
   .bundle()
@@ -153,7 +154,7 @@ gulp.task('styles', function() {
   gulp.src('./node_modules/bootstrap/dist/fonts/*')
   .pipe(gulp.dest(config.buildDir+'/fonts'));
 
-  return gulp.src(config.globs.sass)
+  return gulp.src(config.sassMain)
   .pipe(sourcemaps.init())
   .pipe(sass({outputStyle: 'compressed'}))
   .on('error', errorlog)
@@ -201,7 +202,7 @@ gulp.task('default', ['scripts', 'styles', 'html', 'browser-sync'], function(){
 
 if(!args.nowatch){
     console.log("Watching for static and html changes");
-    gulp.watch(config.globs.scss, ['styles']);
+    gulp.watch(config.globs.sass, ['styles']);
     gulp.watch(config.globs.staticFiles, ['html']);
 }
 });

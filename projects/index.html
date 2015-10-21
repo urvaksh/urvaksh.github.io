@@ -3,21 +3,31 @@
 
 <head>
 
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" type="text/css" href="css/style.css" />
-    <title>Codeaspect Projects Test</title>
-    <!--<script src="js/vendor.js"></script>-->
-    <script src="js/app.js"></script>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="css/style.css" />
+  <title>Codeaspect Projects Test</title>
+  <!--<script src="js/vendor.js"></script>-->
+  <script src="js/app.js"></script>
 
 </head>
 
 <body>
-<h1>Project Wiki</h1>
+  <h1>Project Wiki</h1>
+  <x-project-index projectName="Sheldon" template="projectIndexTemplate"></x-project-index>
+  <x-project-index projectName="puFFer" template="projectIndexTemplate"></x-project-index>
 
-<p id="menu"></p>
-<div id="content"></div>
+  <template id="projectIndexTemplate">
+    <h2>{{title}}</h2>
+    {{#links}}
+    <a href="#Projects/{{../title}}/{{href}}" wiki-loc="{{href}}">{{name}}</a><br />
+    {{/links}}
+  </template>
+
+<project-markdown>
+
+</project-markdown>
 
 </body>
 
